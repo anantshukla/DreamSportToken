@@ -1,0 +1,15 @@
+{
+  "name": "SmartContract-NT",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "remixd -s D:\\Projects\\SmartContract-NT --remix-ide https://remix.ethereum.org/#optimize=false&runs=200&evmVersion=null&version=soljson-v0.8.4+commit.c7e474f2.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@remix-project/remixd": "^0.4.1"
+  }
+}
