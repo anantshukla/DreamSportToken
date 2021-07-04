@@ -4,12 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "remixd -s D:\\Projects\\SmartContract-NT --remix-ide https://remix.ethereum.org/#optimize=false&runs=200&evmVersion=null&version=soljson-v0.8.4+commit.c7e474f2.js"
+    "remix": "remixd -s D:\\Projects\\DreamSportToken --remix-ide https://remix.ethereum.org/"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@remix-project/remixd": "^0.4.1"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-etherscan": "^2.1.3"
   }
 }

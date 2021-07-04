@@ -1,0 +1,47 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [],
+		"devdoc": {
+			"details": "Math operations with safety checks that revert on error",
+			"kind": "dev",
+			"methods": {},
+			"title": "SafeMathUint",
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/SafeMathUint.sol": "SafeMathUint"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/SafeMathUint.sol": {
+			"keccak256": "0xf08ce8381f97126bc8169173510f65d65ff92b2c02ee3800dde15fc223a20690",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://9429643e7312b662a2e336a6ac05b5ea6296127a3a9229bf6d0bfc5ea9f6c78d",
+				"dweb:/ipfs/QmaZ93QkQ6nPwTNHhdqBiUMUz662n3yeR7EqQcZqpZ1cB9"
+			]
+		}
+	},
+	"version": 1
+}

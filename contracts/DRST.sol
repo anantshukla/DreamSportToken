@@ -10,7 +10,7 @@ import "./IUniswapV2Pair.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Router.sol";
 
-contract DRSTTestA is ERC20, Ownable {
+contract DRSTTestB is ERC20, Ownable {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public uniswapV2Router;
@@ -110,7 +110,7 @@ contract DRSTTestA is ERC20, Ownable {
     	address indexed processor
     );
 
-    constructor() public ERC20("DRSTTestA", "DRSTTestA") {
+    constructor() public ERC20("DRSTTestB", "DRSTTestB") {
         uint256 _BNBRewardsFee = 10;
         uint256 _liquidityFee = 5;
 
@@ -122,9 +122,11 @@ contract DRSTTestA is ERC20, Ownable {
     	dividendTracker = new DRSTDividendTracker();
 
     	liquidityWallet = owner();
-
-    	
-    	IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
+        
+        //Address for PancakeSwap
+        //mainnet-> 0x10ED43C718714eb63d5aA57B78B54704E256024E
+    	//testnet-> 0xD99D1c33F9fC3444f8101754aBC46c52416550D1
+    	IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1);
          // Create a uniswap pair for this new token
         address _uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
