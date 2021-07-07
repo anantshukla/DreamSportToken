@@ -21,7 +21,7 @@ contract Marketable is Context {
     /**
      * @dev Returns the address of the current marketing wallet.
      */
-    function marketingWallet() public view returns (address) {
+    function marketingWalletAddress() public view returns (address) {
         return _marketingWallet;
     }
 

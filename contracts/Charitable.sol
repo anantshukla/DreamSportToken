@@ -21,7 +21,7 @@ contract Charitable is Context {
     /**
      * @dev Returns the address of the current charity wallet.
      */
-    function charityWallet() public view returns (address) {
+    function charityWalletAddress() public view returns (address) {
         return _charityWallet;
     }
 

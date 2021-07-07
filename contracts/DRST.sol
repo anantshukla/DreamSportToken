@@ -6,11 +6,13 @@ import "./DividendPayingToken.sol";
 import "./SafeMath.sol";
 import "./IterableMapping.sol";
 import "./Ownable.sol";
+import "./Charitable.sol";
+import "./Marketable.sol";
 import "./IUniswapV2Pair.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Router.sol";
 
-contract DRSTTestB is ERC20, Ownable {
+contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public uniswapV2Router;
@@ -23,12 +25,16 @@ contract DRSTTestB is ERC20, Ownable {
     DRSTDividendTracker public dividendTracker;
 
     address public liquidityWallet;
+    address public charityWallet;
+    address public marketingWallet;
 
     uint256 public maxSellTransactionAmount = 1000000 * (10**18);
     uint256 public swapTokensAtAmount = 200000 * (10**18);
 
     uint256 public immutable BNBRewardsFee;
     uint256 public immutable liquidityFee;
+    uint256 public immutable charityFee;
+    uint256 public immutable marketingFee;
     uint256 public immutable totalFees;
 
     // sells have fees of 12 and 6 (10 * 1.2 and 5 * 1.2)
@@ -112,16 +118,24 @@ contract DRSTTestB is ERC20, Ownable {
 
     constructor() public ERC20("DRSTTestB", "DRSTTestB") {
         uint256 _BNBRewardsFee = 10;
-        uint256 _liquidityFee = 5;
+        uint256 _liquidityFee = 2;
+        uint256 _charityFee = 3;
+        uint256 _marketingFee = 2;
+       
 
         BNBRewardsFee = _BNBRewardsFee;
         liquidityFee = _liquidityFee;
-        totalFees = _BNBRewardsFee.add(_liquidityFee);
+        charityFee = _charityFee;
+        marketingFee = _marketingFee;
+        
+        totalFees = _BNBRewardsFee.add(_liquidityFee).add(_charityFee).add(_marketingFee);
 
 
     	dividendTracker = new DRSTDividendTracker();
 
     	liquidityWallet = owner();
+    	charityWallet = charityWalletAddress();
+    	marketingWallet = marketingWalletAddress();
         
         //Address for PancakeSwap
         //mainnet-> 0x10ED43C718714eb63d5aA57B78B54704E256024E
@@ -136,7 +150,7 @@ contract DRSTTestB is ERC20, Ownable {
 
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
 
-        address _bounceFixedSaleWallet = 0x4Fc4bFeDc5c82644514fACF716C7F888a0C73cCc;
+        address _bounceFixedSaleWallet = 0xb093B764d6Aa6C6962555a03C02142991c498632;
         bounceFixedSaleWallet = _bounceFixedSaleWallet;
 
         // exclude from receiving dividends
@@ -149,10 +163,14 @@ contract DRSTTestB is ERC20, Ownable {
         // exclude from paying fees or having max transaction amount
         excludeFromFees(liquidityWallet, true);
         excludeFromFees(address(this), true);
+        excludeFromFees(charityWallet, true);
+        excludeFromFees(marketingWallet, true);
 
         // enable owner and fixed-sale wallet to send tokens before presales are over
         canTransferBeforeTradingIsEnabled[owner()] = true;
         canTransferBeforeTradingIsEnabled[_bounceFixedSaleWallet] = true;
+        canTransferBeforeTradingIsEnabled[charityWallet] = true;
+        canTransferBeforeTradingIsEnabled[marketingWallet] = true;
 
         /*
             _mint is an internal function in ERC20.sol that is only called here,
