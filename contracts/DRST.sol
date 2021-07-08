@@ -163,7 +163,7 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
         // enable owner and fixed-sale wallet to send tokens before presales are over
         canTransferBeforeTradingIsEnabled[owner()] = true;
         canTransferBeforeTradingIsEnabled[_bounceFixedSaleWallet] = true;
-        canTransferBeforeTradingIsEnabled[charityWalletAddress();] = true;
+        canTransferBeforeTradingIsEnabled[charityWalletAddress()] = true;
         canTransferBeforeTradingIsEnabled[marketingWalletAddress()] = true;
 
         /*
@@ -474,17 +474,17 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
         
         // generate the uniswap pair path of token -> weth
         address[] memory path = new address[](2);
-        path[0] = charityWalletAddress();;
+        path[0] = charityWalletAddress();
         path[1] = uniswapV2Router.WETH();
 
-        _approve(charityWalletAddress();, address(uniswapV2Router), tokens);
+        _approve(charityWalletAddress(), address(uniswapV2Router), tokens);
 
         // make the swap
         uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
             tokens,
             0, // accept any amount of ETH
             path,
-            charityWalletAddress();,
+            charityWalletAddress(),
             block.timestamp
         );
     }
