@@ -163,8 +163,6 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
         // exclude from paying fees or having max transaction amount
         excludeFromFees(liquidityWallet, true);
         excludeFromFees(address(this), true);
-        excludeFromFees(charityWallet, true);
-        excludeFromFees(marketingWallet, true);
 
         // enable owner and fixed-sale wallet to send tokens before presales are over
         canTransferBeforeTradingIsEnabled[owner()] = true;
