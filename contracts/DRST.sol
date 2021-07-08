@@ -402,6 +402,12 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
             uint256 swapTokens = contractTokenBalance.mul(liquidityFee).div(totalFees);
             swapAndLiquify(swapTokens);
 
+            uint256 charityTokens = contractTokenBalance.mul(charityFee).div(totalFees);
+            sendToCharityWallet(charityTokens);
+
+            uint256 marketingTokens = contractTokenBalance.mul(marketingFee).div(totalFees);
+            sendToMarketingWallet(marketingTokens);
+
             uint256 sellTokens = balanceOf(address(this));
             swapAndSendDividends(sellTokens);
 
@@ -467,6 +473,14 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
         addLiquidity(otherHalf, newBalance);
         
         emit SwapAndLiquify(half, newBalance, otherHalf);
+    }
+    
+    function sendToCharityWallet(uint256 tokens) private {
+        //Transfer to charity wallet
+    }
+    
+    function sendToMarketingWallet(uint256 tokens) private {
+        //Transfer to marketing wallet
     }
 
     function swapTokensForEth(uint256 tokenAmount) private {
