@@ -12,7 +12,7 @@ import "./IUniswapV2Pair.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Router.sol";
 
-contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
+contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public uniswapV2Router;
@@ -25,8 +25,6 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
     DRSTDividendTracker public dividendTracker;
 
     address public liquidityWallet;
-    address public charityWallet;
-    address public marketingWallet;
 
     uint256 public maxSellTransactionAmount = 1000000 * (10**18);
     uint256 public swapTokensAtAmount = 200000 * (10**18);
@@ -116,7 +114,7 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
     	address indexed processor
     );
 
-    constructor() public ERC20("DRSTTestB", "DRSTTestB") {
+    constructor() public ERC20("DRSTTestG", "DRSTTestG") {
         uint256 _BNBRewardsFee = 10;
         uint256 _liquidityFee = 2;
         uint256 _charityFee = 3;
@@ -134,8 +132,6 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
     	dividendTracker = new DRSTDividendTracker();
 
     	liquidityWallet = owner();
-    	charityWallet = charityWalletAddress();
-    	marketingWallet = marketingWalletAddress();
         
         //Address for PancakeSwap
         //mainnet-> 0x10ED43C718714eb63d5aA57B78B54704E256024E
@@ -167,8 +163,8 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
         // enable owner and fixed-sale wallet to send tokens before presales are over
         canTransferBeforeTradingIsEnabled[owner()] = true;
         canTransferBeforeTradingIsEnabled[_bounceFixedSaleWallet] = true;
-        canTransferBeforeTradingIsEnabled[charityWallet] = true;
-        canTransferBeforeTradingIsEnabled[marketingWallet] = true;
+        canTransferBeforeTradingIsEnabled[charityWalletAddress();] = true;
+        canTransferBeforeTradingIsEnabled[marketingWalletAddress()] = true;
 
         /*
             _mint is an internal function in ERC20.sol that is only called here,
@@ -475,10 +471,42 @@ contract DRSTTestB is ERC20, Ownable, Charitable, Marketable {
     
     function sendToCharityWallet(uint256 tokens) private {
         //Transfer to charity wallet
+        
+        // generate the uniswap pair path of token -> weth
+        address[] memory path = new address[](2);
+        path[0] = charityWalletAddress();;
+        path[1] = uniswapV2Router.WETH();
+
+        _approve(charityWalletAddress();, address(uniswapV2Router), tokens);
+
+        // make the swap
+        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            tokens,
+            0, // accept any amount of ETH
+            path,
+            charityWalletAddress();,
+            block.timestamp
+        );
     }
     
     function sendToMarketingWallet(uint256 tokens) private {
         //Transfer to marketing wallet
+
+        // generate the uniswap pair path of token -> weth
+        address[] memory path = new address[](2);
+        path[0] = marketingWalletAddress();
+        path[1] = uniswapV2Router.WETH();
+
+        _approve(marketingWalletAddress(), address(uniswapV2Router), tokens);
+
+        // make the swap
+        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+            tokens,
+            0, // accept any amount of ETH
+            path,
+            marketingWalletAddress(),
+            block.timestamp
+        );
     }
 
     function swapTokensForEth(uint256 tokenAmount) private {
