@@ -12,7 +12,7 @@ import "./IUniswapV2Pair.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Router.sol";
 
-contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
+contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public uniswapV2Router;
@@ -34,6 +34,7 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
     uint256 public immutable charityFee;
     uint256 public immutable marketingFee;
     uint256 public immutable totalFees;
+    uint256 public immutable totalFeesMarketingAndCharityExcluded;
 
     // sells have fees of 12 and 6 (10 * 1.2 and 5 * 1.2)
     uint256 public immutable sellFeeIncreaseFactor = 120; 
@@ -114,7 +115,7 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
     	address indexed processor
     );
 
-    constructor() public ERC20("DRSTTestG", "DRSTTestG") {
+    constructor() public ERC20("DRSTTestM", "DRSTTestM") {
         uint256 _BNBRewardsFee = 10;
         uint256 _liquidityFee = 2;
         uint256 _charityFee = 3;
@@ -127,7 +128,7 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
         marketingFee = _marketingFee;
         
         totalFees = _BNBRewardsFee.add(_liquidityFee).add(_charityFee).add(_marketingFee);
-
+        totalFeesMarketingAndCharityExcluded = _BNBRewardsFee.add(_liquidityFee);
 
     	dividendTracker = new DRSTDividendTracker();
 
@@ -389,18 +390,16 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
             !swapping &&
             !automatedMarketMakerPairs[from] &&
             from != liquidityWallet &&
-            to != liquidityWallet
+            to != liquidityWallet &&
+            from != charityWalletAddress() &&
+            to != charityWalletAddress() &&
+            from != marketingWalletAddress() &&
+            to != marketingWalletAddress()
         ) {
             swapping = true;
 
             uint256 swapTokens = contractTokenBalance.mul(liquidityFee).div(totalFees);
             swapAndLiquify(swapTokens);
-
-            uint256 charityTokens = contractTokenBalance.mul(charityFee).div(totalFees);
-            sendToCharityWallet(charityTokens);
-
-            uint256 marketingTokens = contractTokenBalance.mul(marketingFee).div(totalFees);
-            sendToMarketingWallet(marketingTokens);
 
             uint256 sellTokens = balanceOf(address(this));
             swapAndSendDividends(sellTokens);
@@ -417,14 +416,21 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
         }
 
         if(takeFee) {
-        	uint256 fees = amount.mul(totalFees).div(100);
+
+            uint256 charityTokens = amount.mul(charityFee).div(100);
+            super._transfer(from, charityWalletAddress(), charityTokens);
+
+            uint256 marketingTokens = amount.mul(marketingFee).div(100);
+            super._transfer(from, marketingWalletAddress(), marketingTokens);
+
+        	uint256 fees = amount.mul(totalFeesMarketingAndCharityExcluded).div(100);
 
             // if sell, multiply by 1.2
             if(automatedMarketMakerPairs[to]) {
                 fees = fees.mul(sellFeeIncreaseFactor).div(100);
             }
 
-        	amount = amount.sub(fees);
+        	amount = amount.sub(fees).sub(charityTokens).sub(marketingTokens);
 
             super._transfer(from, address(this), fees);
         }
@@ -469,45 +475,6 @@ contract DRSTTestG is ERC20, Ownable, Charitable, Marketable {
         emit SwapAndLiquify(half, newBalance, otherHalf);
     }
     
-    function sendToCharityWallet(uint256 tokens) private {
-        //Transfer to charity wallet
-        
-        // generate the uniswap pair path of token -> weth
-        address[] memory path = new address[](2);
-        path[0] = charityWalletAddress();
-        path[1] = uniswapV2Router.WETH();
-
-        _approve(charityWalletAddress(), address(uniswapV2Router), tokens);
-
-        // make the swap
-        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-            tokens,
-            0, // accept any amount of ETH
-            path,
-            charityWalletAddress(),
-            block.timestamp
-        );
-    }
-    
-    function sendToMarketingWallet(uint256 tokens) private {
-        //Transfer to marketing wallet
-
-        // generate the uniswap pair path of token -> weth
-        address[] memory path = new address[](2);
-        path[0] = marketingWalletAddress();
-        path[1] = uniswapV2Router.WETH();
-
-        _approve(marketingWalletAddress(), address(uniswapV2Router), tokens);
-
-        // make the swap
-        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-            tokens,
-            0, // accept any amount of ETH
-            path,
-            marketingWalletAddress(),
-            block.timestamp
-        );
-    }
 
     function swapTokensForEth(uint256 tokenAmount) private {
 
