@@ -12,7 +12,7 @@ import "./IUniswapV2Pair.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Router.sol";
 
-contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
+contract DRST is ERC20, Ownable, Charitable, Marketable {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public uniswapV2Router;
@@ -26,7 +26,7 @@ contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
 
     address public liquidityWallet;
 
-    uint256 public maxSellTransactionAmount = 1000000 * (10**18);
+    uint256 public maxSellTransactionAmount = 1000000000 * (10**18);
     uint256 public swapTokensAtAmount = 200000 * (10**18);
 
     uint256 public immutable BNBRewardsFee;
@@ -34,7 +34,7 @@ contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
     uint256 public immutable charityFee;
     uint256 public immutable marketingFee;
     uint256 public immutable totalFees;
-    uint256 public immutable totalFeesMarketingAndCharityExcluded;
+    uint256 public immutable bnbRewardsAndLiquidityFees;
 
     // sells have fees of 12 and 6 (10 * 1.2 and 5 * 1.2)
     uint256 public immutable sellFeeIncreaseFactor = 120; 
@@ -115,7 +115,7 @@ contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
     	address indexed processor
     );
 
-    constructor() public ERC20("DRSTTestM", "DRSTTestM") {
+    constructor() public ERC20("DreamSport", "DRST") {
         uint256 _BNBRewardsFee = 10;
         uint256 _liquidityFee = 2;
         uint256 _charityFee = 3;
@@ -128,7 +128,7 @@ contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
         marketingFee = _marketingFee;
         
         totalFees = _BNBRewardsFee.add(_liquidityFee).add(_charityFee).add(_marketingFee);
-        totalFeesMarketingAndCharityExcluded = _BNBRewardsFee.add(_liquidityFee);
+        bnbRewardsAndLiquidityFees = _BNBRewardsFee.add(_liquidityFee);
 
     	dividendTracker = new DRSTDividendTracker();
 
@@ -137,7 +137,7 @@ contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
         //Address for PancakeSwap
         //mainnet-> 0x10ED43C718714eb63d5aA57B78B54704E256024E
     	//testnet-> 0xD99D1c33F9fC3444f8101754aBC46c52416550D1
-    	IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0xD99D1c33F9fC3444f8101754aBC46c52416550D1);
+    	IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
          // Create a uniswap pair for this new token
         address _uniswapV2Pair = IUniswapV2Factory(_uniswapV2Router.factory())
             .createPair(address(this), _uniswapV2Router.WETH());
@@ -147,7 +147,7 @@ contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
 
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
 
-        address _bounceFixedSaleWallet = 0xb093B764d6Aa6C6962555a03C02142991c498632;
+        address _bounceFixedSaleWallet = 0xDABB51D119552166aa8a87C54a16C1C049c231Cf;
         bounceFixedSaleWallet = _bounceFixedSaleWallet;
 
         // exclude from receiving dividends
@@ -423,7 +423,7 @@ contract DRSTTestM is ERC20, Ownable, Charitable, Marketable {
             uint256 marketingTokens = amount.mul(marketingFee).div(100);
             super._transfer(from, marketingWalletAddress(), marketingTokens);
 
-        	uint256 fees = amount.mul(totalFeesMarketingAndCharityExcluded).div(100);
+        	uint256 fees = amount.mul(bnbRewardsAndLiquidityFees).div(100);
 
             // if sell, multiply by 1.2
             if(automatedMarketMakerPairs[to]) {
