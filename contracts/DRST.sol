@@ -103,13 +103,14 @@ contract DRST is ERC20, Ownable {
     event UpdateMaxSellTransactionAmount(uint newMaxSellTransactionAmount, uint oldMaxSellTransactionAmount);
 
 
-    constructor() public ERC20("ELONToken", "ELON") {
+    constructor() public ERC20("DreamSport", "DRST") {
         // Buy Tokenomics
         liquidityBuyFee = 4;
         marketingBuyFee = 3;
         devBuyFee = 3;
         charityBuyFee = 3;
         totalBuyFees = liquidityBuyFee.add(marketingBuyFee).add(devBuyFee).add(charityBuyFee);
+
 
         // Sell Tokenomics
         liquiditySellFee = 2;
