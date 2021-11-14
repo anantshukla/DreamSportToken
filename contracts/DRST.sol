@@ -111,7 +111,8 @@ contract DRST is ERC20, Ownable {
         charityBuyFee = 3;
         totalBuyFees = liquidityBuyFee.add(marketingBuyFee).add(devBuyFee).add(charityBuyFee);
 
-        // Sell Tokenomics        
+
+        // Sell Tokenomics
         liquiditySellFee = 2;
         marketingSellFee = 2;
         charitySellFee = 2;
