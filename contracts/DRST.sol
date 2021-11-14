@@ -6,94 +6,79 @@ import "./DividendPayingToken.sol";
 import "./SafeMath.sol";
 import "./IterableMapping.sol";
 import "./Ownable.sol";
-import "./Charitable.sol";
-import "./Marketable.sol";
 import "./IUniswapV2Pair.sol";
 import "./IUniswapV2Factory.sol";
 import "./IUniswapV2Router.sol";
 
-contract DRST is ERC20, Ownable, Charitable, Marketable {
+contract DRST is ERC20, Ownable {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public uniswapV2Router;
     address public immutable uniswapV2Pair;
-
-    address public immutable bounceFixedSaleWallet;
 
     bool private swapping;
 
     DRSTDividendTracker public dividendTracker;
 
     address public liquidityWallet;
+    address public charityWallet;
+    address public marketingWallet;
 
     uint256 public maxSellTransactionAmount = 1000000000 * (10**18);
     uint256 public swapTokensAtAmount = 200000 * (10**18);
+    address public deadWallet = 0x000000000000000000000000000000000000dEaD;
+    
+    mapping(address => bool) public _isBlacklisted;
+    
+    //Buy
+    uint256 public liquidityBuyFee;
+    uint256 public marketingBuyFee;
+    uint256 public devBuyFee;
+    uint256 public charityBuyFee;
+    //total
+    uint256 public totalBuyFees;
+    
+    //Sell
+    uint256 public liquiditySellFee;
+    uint256 public marketingSellFee;
+    uint256 public devSellFee;
+    uint256 public charitySellFee;
+    uint256 public BNBSellRewardsFee;
+    
+    //total
+    uint256 public totalSellFees;
 
-    uint256 public immutable BNBRewardsFee;
-    uint256 public immutable liquidityFee;
-    uint256 public immutable charityFee;
-    uint256 public immutable marketingFee;
-    uint256 public immutable totalFees;
-    uint256 public immutable bnbRewardsAndLiquidityFees;
-
-    // sells have fees of 12 and 6 (10 * 1.2 and 5 * 1.2)
-    uint256 public immutable sellFeeIncreaseFactor = 120; 
+    // sellTax = (totalSellFees * sellFeesIncreaseFactor)/100 - totalSellFees
+    // sells have fees of 0% initally
+    uint256 public sellFeeIncreaseFactor = 100; 
 
     // use by default 300,000 gas to process auto-claiming dividends
     uint256 public gasForProcessing = 300000;
 
-
-    /*   Fixed Sale   */
-
-    // timestamp for when purchases on the fixed-sale are available to early participants
-    uint256 public immutable fixedSaleStartTimestamp = 1623960000; //June 17, 20:00 UTC, 2021
-
-    // the fixed-sale will be open to the public 10 minutes after fixedSaleStartTimestamp,
-    // or after 600 buys, whichever comes first.
-    uint256 public immutable fixedSaleEarlyParticipantDuration = 600;
-    uint256 public immutable fixedSaleEarlyParticipantBuysThreshold = 600;
-
-    // track number of buys. once this reaches fixedSaleEarlyParticipantBuysThreshold,
-    // the fixed-sale will be open to the public even if it's still in the first 10 minutes
-    uint256 public numberOfFixedSaleBuys;
-    // track who has bought
-    mapping (address => bool) public fixedSaleBuyers;
-
     /******************/
-
-
-
-    // timestamp for when the token can be traded freely on PanackeSwap
-    uint256 public immutable tradingEnabledTimestamp = 1623967200; //June 17, 22:00 UTC, 2021
 
     // exlcude from fees and max transaction amount
     mapping (address => bool) private _isExcludedFromFees;
-
-    // addresses that can make transfers before presale is over
-    mapping (address => bool) private canTransferBeforeTradingIsEnabled;
-
-    mapping (address => bool) public fixedSaleEarlyParticipants;
 
     // store addresses that a automatic market maker pairs. Any transfer *to* these addresses
     // could be subject to a maximum transfer amount
     mapping (address => bool) public automatedMarketMakerPairs;
 
     event UpdateDividendTracker(address indexed newAddress, address indexed oldAddress);
-
+    event UpdateSellFeesIncreaseFactor(uint newSellingFees, uint sellFeeIncreaseFactor);
+    
     event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
 
     event ExcludeFromFees(address indexed account, bool isExcluded);
     event ExcludeMultipleAccountsFromFees(address[] accounts, bool isExcluded);
 
-    event FixedSaleEarlyParticipantsAdded(address[] participants);
-
     event SetAutomatedMarketMakerPair(address indexed pair, bool indexed value);
 
     event LiquidityWalletUpdated(address indexed newLiquidityWallet, address indexed oldLiquidityWallet);
+    event MarketingWalletUpdated(address indexed newMarketingWallet, address indexed oldMarketingWallet);
+    event CharityWalletUpdated(address indexed newCharityWallet, address indexed oldCharityWallet);
 
     event GasForProcessingUpdated(uint256 indexed newValue, uint256 indexed oldValue);
-
-    event FixedSaleBuy(address indexed account, uint256 indexed amount, bool indexed earlyParticipant, uint256 numberOfBuyers);
 
     event SwapAndLiquify(
         uint256 tokensSwapped,
@@ -115,24 +100,31 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
     	address indexed processor
     );
 
-    constructor() public ERC20("DreamSport", "DRST") {
-        uint256 _BNBRewardsFee = 10;
-        uint256 _liquidityFee = 2;
-        uint256 _charityFee = 3;
-        uint256 _marketingFee = 2;
-       
+    event UpdateMaxSellTransactionAmount(uint newMaxSellTransactionAmount, uint oldMaxSellTransactionAmount);
 
-        BNBRewardsFee = _BNBRewardsFee;
-        liquidityFee = _liquidityFee;
-        charityFee = _charityFee;
-        marketingFee = _marketingFee;
-        
-        totalFees = _BNBRewardsFee.add(_liquidityFee).add(_charityFee).add(_marketingFee);
-        bnbRewardsAndLiquidityFees = _BNBRewardsFee.add(_liquidityFee);
+
+    constructor() public ERC20("DreamSport", "DRST") {
+        // Buy Tokenomics
+        liquidityBuyFee = 4;
+        marketingBuyFee = 3;
+        devBuyFee = 3;
+        charityBuyFee = 3;
+        totalBuyFees = liquidityBuyFee.add(marketingBuyFee).add(devBuyFee).add(charityBuyFee);
+
+        // Sell Tokenomics        
+        liquiditySellFee = 2;
+        marketingSellFee = 2;
+        charitySellFee = 2;
+        BNBSellRewardsFee = 2;
+        devSellFee = 2;
+        totalSellFees = liquiditySellFee.add(marketingSellFee).add(charitySellFee).add(BNBSellRewardsFee).add(devSellFee);
+
 
     	dividendTracker = new DRSTDividendTracker();
 
     	liquidityWallet = owner();
+    	charityWallet = owner();
+    	marketingWallet = owner();
         
         //Address for PancakeSwap
         //mainnet-> 0x10ED43C718714eb63d5aA57B78B54704E256024E
@@ -147,25 +139,16 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
 
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
 
-        address _bounceFixedSaleWallet = 0xDABB51D119552166aa8a87C54a16C1C049c231Cf;
-        bounceFixedSaleWallet = _bounceFixedSaleWallet;
-
         // exclude from receiving dividends
         dividendTracker.excludeFromDividends(address(dividendTracker));
         dividendTracker.excludeFromDividends(address(this));
         dividendTracker.excludeFromDividends(owner());
         dividendTracker.excludeFromDividends(address(_uniswapV2Router));
-        dividendTracker.excludeFromDividends(_bounceFixedSaleWallet);
+        dividendTracker.excludeFromDividends(deadWallet);
 
         // exclude from paying fees or having max transaction amount
         excludeFromFees(liquidityWallet, true);
         excludeFromFees(address(this), true);
-
-        // enable owner and fixed-sale wallet to send tokens before presales are over
-        canTransferBeforeTradingIsEnabled[owner()] = true;
-        canTransferBeforeTradingIsEnabled[_bounceFixedSaleWallet] = true;
-        canTransferBeforeTradingIsEnabled[charityWalletAddress()] = true;
-        canTransferBeforeTradingIsEnabled[marketingWalletAddress()] = true;
 
         /*
             _mint is an internal function in ERC20.sol that is only called here,
@@ -177,6 +160,18 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
     receive() external payable {
 
   	}
+
+    function updateMaxSellTransactionAmount(uint newValue) public onlyOwner {
+        require(newValue>=0, "SweetShiba: The new maxSellTransaction amount should be greater than or equal to zero");
+        emit UpdateMaxSellTransactionAmount(newValue, maxSellTransactionAmount);
+        maxSellTransactionAmount = newValue * (10**18);
+    }
+
+    function updateSellFeesIncreaseFactor(uint256 newSellingFees) public onlyOwner {
+        require(newSellingFees>=0, "SweetShiba: New Selling fees should be greater than 0");
+        emit UpdateSellFeesIncreaseFactor(newSellingFees, sellFeeIncreaseFactor);
+        sellFeeIncreaseFactor = newSellingFees;
+    }
 
     function updateDividendTracker(address newAddress) public onlyOwner {
         require(newAddress != address(dividendTracker), "DRST: The dividend tracker already has that address");
@@ -216,18 +211,14 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
         emit ExcludeMultipleAccountsFromFees(accounts, excluded);
     }
 
-    function addFixedSaleEarlyParticipants(address[] calldata accounts) external onlyOwner {
-        for(uint256 i = 0; i < accounts.length; i++) {
-            fixedSaleEarlyParticipants[accounts[i]] = true;
-        }
-
-        emit FixedSaleEarlyParticipantsAdded(accounts);
-    }
-
     function setAutomatedMarketMakerPair(address pair, bool value) public onlyOwner {
         require(pair != uniswapV2Pair, "DRST: The PancakeSwap pair cannot be removed from automatedMarketMakerPairs");
 
         _setAutomatedMarketMakerPair(pair, value);
+    }
+    
+    function blacklistAddress(address account, bool value) external onlyOwner {
+        _isBlacklisted[account] = value;
     }
 
     function _setAutomatedMarketMakerPair(address pair, bool value) private {
@@ -241,12 +232,25 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
         emit SetAutomatedMarketMakerPair(pair, value);
     }
 
-
     function updateLiquidityWallet(address newLiquidityWallet) public onlyOwner {
         require(newLiquidityWallet != liquidityWallet, "DRST: The liquidity wallet is already this address");
         excludeFromFees(newLiquidityWallet, true);
         emit LiquidityWalletUpdated(newLiquidityWallet, liquidityWallet);
         liquidityWallet = newLiquidityWallet;
+    }
+
+    function updateMarketingWallet(address newMarketingWallet) public onlyOwner {
+        require(newMarketingWallet != marketingWallet, "DRST: The marketing wallet is already this address");
+        excludeFromFees(newMarketingWallet, true);
+        emit MarketingWalletUpdated(newMarketingWallet, marketingWallet);
+        marketingWallet = newMarketingWallet;
+    }
+
+    function updateCharityWallet(address newCharityWallet) public onlyOwner {
+        require(newCharityWallet != charityWallet, "DRST: The charity wallet is already this address");
+        excludeFromFees(newCharityWallet, true);
+        emit CharityWalletUpdated(newCharityWallet, charityWallet);
+        charityWallet = newCharityWallet;
     }
 
     function updateGasForProcessing(uint256 newValue) public onlyOwner {
@@ -323,10 +327,6 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
         return dividendTracker.getNumberOfTokenHolders();
     }
 
-    function getTradingIsEnabled() public view returns (bool) {
-        return block.timestamp >= tradingEnabledTimestamp;
-    }
-
     function _transfer(
         address from,
         address to,
@@ -334,45 +334,16 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
     ) internal override {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
-
-        bool tradingIsEnabled = getTradingIsEnabled();
-
-        // only whitelisted addresses can make transfers after the fixed-sale has started
-        // and before the public presale is over
-        if(!tradingIsEnabled) {
-            require(canTransferBeforeTradingIsEnabled[from], "DRST: This account cannot send tokens until trading is enabled");
-        }
-
+        require(!_isBlacklisted[from] && !_isBlacklisted[to], 'Blacklisted address');
+        
         if(amount == 0) {
             super._transfer(from, to, 0);
             return;
         }
 
-        bool isFixedSaleBuy = from == bounceFixedSaleWallet && to != owner();
-
-        // the fixed-sale can only send tokens to the owner or early participants of the fixed sale in the first 10 minutes,
-        // or 600 transactions, whichever is first.
-        if(isFixedSaleBuy) {
-            require(block.timestamp >= fixedSaleStartTimestamp, "DRST: The fixed-sale has not started yet.");
-
-            bool openToEveryone = block.timestamp.sub(fixedSaleStartTimestamp) >= fixedSaleEarlyParticipantDuration ||
-                                  numberOfFixedSaleBuys >= fixedSaleEarlyParticipantBuysThreshold;
-
-            if(!openToEveryone) {
-                require(fixedSaleEarlyParticipants[to], "DRST: The fixed-sale is only available to certain participants at the start");
-            }
-
-            if(!fixedSaleBuyers[to]) {
-                fixedSaleBuyers[to] = true;
-                numberOfFixedSaleBuys = numberOfFixedSaleBuys.add(1);
-            }
-
-            emit FixedSaleBuy(to, amount, fixedSaleEarlyParticipants[to], numberOfFixedSaleBuys);
-        }
-
+        //Check for maxSellTransactionAmount
         if( 
         	!swapping &&
-        	tradingIsEnabled &&
             automatedMarketMakerPairs[to] && // sells only by detecting transfer to automated market maker pair
         	from != address(uniswapV2Router) && //router -> pair is removing liquidity which shouldn't have max
             !_isExcludedFromFees[to] //no max for those excluded from fees
@@ -385,21 +356,56 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
         bool canSwap = contractTokenBalance >= swapTokensAtAmount;
 
         if(
-            tradingIsEnabled && 
             canSwap &&
             !swapping &&
             !automatedMarketMakerPairs[from] &&
             from != liquidityWallet &&
             to != liquidityWallet &&
-            from != charityWalletAddress() &&
-            to != charityWalletAddress() &&
-            from != marketingWalletAddress() &&
-            to != marketingWalletAddress()
+            from != charityWallet &&
+            to != charityWallet &&
+            from != marketingWallet &&
+            to != marketingWallet &&
+            from != owner() &&
+            to != owner()
         ) {
             swapping = true;
 
-            uint256 swapTokens = contractTokenBalance.mul(liquidityFee).div(totalFees);
-            swapAndLiquify(swapTokens);
+            //if sell
+            if(automatedMarketMakerPairs[to]) {
+                //marketing
+                uint256 marketingTokens = contractTokenBalance.mul(marketingSellFee).div(totalSellFees);
+                super._transfer(from, marketingWallet, marketingTokens);
+                
+                //charity
+                uint256 charityTokens = contractTokenBalance.mul(charitySellFee).div(totalSellFees);
+                super._transfer(from, charityWallet, charityTokens);
+
+                //dev
+                uint256 devTokens = contractTokenBalance.mul(devSellFee).div(totalSellFees);
+                super._transfer(from, marketingWallet, devTokens);
+
+                //liquidity
+                uint256 swapTokens = contractTokenBalance.mul(liquiditySellFee).div(totalSellFees);
+                swapAndLiquify(swapTokens);
+            }
+            //else buy
+            else {
+                //marketing
+                uint256 marketingTokens = contractTokenBalance.mul(marketingBuyFee).div(totalSellFees);
+                super._transfer(from, marketingWallet, marketingTokens);
+                
+                //charity
+                uint256 charityTokens = contractTokenBalance.mul(charityBuyFee).div(totalSellFees);
+                super._transfer(from, charityWallet, charityTokens);
+
+                //dev
+                uint256 devTokens = contractTokenBalance.mul(devBuyFee).div(totalSellFees);
+                super._transfer(from, marketingWallet, devTokens);
+
+                //liquidity
+                uint256 swapTokens = contractTokenBalance.mul(liquidityBuyFee).div(totalSellFees);
+                swapAndLiquify(swapTokens);
+            }
 
             uint256 sellTokens = balanceOf(address(this));
             swapAndSendDividends(sellTokens);
@@ -408,7 +414,7 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
         }
 
 
-        bool takeFee = !isFixedSaleBuy && tradingIsEnabled && !swapping;
+        bool takeFee = !swapping;
 
         // if any account belongs to _isExcludedFromFee account then remove the fee
         if(_isExcludedFromFees[from] || _isExcludedFromFees[to]) {
@@ -416,21 +422,20 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
         }
 
         if(takeFee) {
+            uint256 fees;
 
-            uint256 charityTokens = amount.mul(charityFee).div(100);
-            super._transfer(from, charityWalletAddress(), charityTokens);
-
-            uint256 marketingTokens = amount.mul(marketingFee).div(100);
-            super._transfer(from, marketingWalletAddress(), marketingTokens);
-
-        	uint256 fees = amount.mul(bnbRewardsAndLiquidityFees).div(100);
-
-            // if sell, multiply by 1.2
+            // if sell
             if(automatedMarketMakerPairs[to]) {
+                fees = amount.mul(totalSellFees).div(100);
+
+                // if sell, multiply by sellFeeIncreaseFactor
                 fees = fees.mul(sellFeeIncreaseFactor).div(100);
             }
+            else {
+                fees = amount.mul(totalBuyFees).div(100);
+            }
 
-        	amount = amount.sub(fees).sub(charityTokens).sub(marketingTokens);
+        	amount = amount.sub(fees);
 
             super._transfer(from, address(this), fees);
         }
@@ -477,8 +482,6 @@ contract DRST is ERC20, Ownable, Charitable, Marketable {
     
 
     function swapTokensForEth(uint256 tokenAmount) private {
-
-        
         // generate the uniswap pair path of token -> weth
         address[] memory path = new address[](2);
         path[0] = address(this);
