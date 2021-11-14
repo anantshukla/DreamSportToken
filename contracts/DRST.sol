@@ -23,6 +23,7 @@ contract DRST is ERC20, Ownable {
     address public liquidityWallet;
     address public charityWallet;
     address public marketingWallet;
+    address public devWallet;
 
     uint256 public maxSellTransactionAmount = 1000000000 * (10**18);
     uint256 public swapTokensAtAmount = 200000 * (10**18);
@@ -77,6 +78,7 @@ contract DRST is ERC20, Ownable {
     event LiquidityWalletUpdated(address indexed newLiquidityWallet, address indexed oldLiquidityWallet);
     event MarketingWalletUpdated(address indexed newMarketingWallet, address indexed oldMarketingWallet);
     event CharityWalletUpdated(address indexed newCharityWallet, address indexed oldCharityWallet);
+    event devWalletUpdated(address indexed newDevWallet, address indexed oldDevWallet);
 
     event GasForProcessingUpdated(uint256 indexed newValue, uint256 indexed oldValue);
 
@@ -126,6 +128,7 @@ contract DRST is ERC20, Ownable {
     	liquidityWallet = owner();
     	charityWallet = owner();
     	marketingWallet = owner();
+        devWallet = owner();
         
         //Address for PancakeSwap
         //mainnet-> 0x10ED43C718714eb63d5aA57B78B54704E256024E
@@ -254,6 +257,13 @@ contract DRST is ERC20, Ownable {
         charityWallet = newCharityWallet;
     }
 
+    function updateDevWallet(address newDevWallet) public onlyOwner {
+        require(newDevWallet != devWallet, "DRST: The dev wallet is already this address");
+        excludeFromFees(newDevWallet, true);
+        emit devWalletUpdated(newDevWallet, devWallet);
+        devWallet = newDevWallet;
+    }
+
     function updateGasForProcessing(uint256 newValue) public onlyOwner {
         require(newValue >= 200000 && newValue <= 500000, "DRST: gasForProcessing must be between 200,000 and 500,000");
         require(newValue != gasForProcessing, "DRST: Cannot update gasForProcessing to same value");
@@ -360,12 +370,10 @@ contract DRST is ERC20, Ownable {
             canSwap &&
             !swapping &&
             !automatedMarketMakerPairs[from] &&
-            from != liquidityWallet &&
-            to != liquidityWallet &&
-            from != charityWallet &&
-            to != charityWallet &&
-            from != marketingWallet &&
-            to != marketingWallet &&
+            from != liquidityWallet && to != liquidityWallet &&
+            from != charityWallet && to != charityWallet &&
+            from != marketingWallet && to != marketingWallet &&
+            from != devWallet && to != devWallet &&
             from != owner() &&
             to != owner()
         ) {
