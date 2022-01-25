@@ -1,5 +1,17 @@
 // SPDX-License-Identifier: MIT
 
+// DreamSportToken has multiple partnerships with professional athletes and are in talks with multiple charity organizations in Connecticut,
+// USA to achieve our ultimate goal of supporting underprivileged children in staying active and achieving their own sporting dreams.
+
+// We are a registered LLC in the United States with the proceeds from our NFTs going to collections rewards, in WAX, and another large portion
+// being converted to BNB and put in as a buyback into our token on the Binance Smart Chain that has yet to become public.
+
+// DIVIDEND YIELD PAID IN BNB! which is auto-claimed every one hour. Simply hold $DRST and you'll receive BNB automatically in your wallet.
+
+// 📱 Telegram: https://t.me/DreamSportToken
+// 🌎 Website: https://www.dreamsporttoken.com/
+// 🌐 Dashboard: https://app.dreamsporttoken.com/
+
 pragma solidity ^0.6.2;
 
 import "./DividendPayingToken.sol";
