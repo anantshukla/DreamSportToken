@@ -119,10 +119,10 @@ contract DRST is ERC20, Ownable {
 
     constructor() public ERC20("DreamSport", "DRST") {
         // Buy Tokenomics
-        liquidityBuyFee = 4;
-        marketingBuyFee = 3;
-        devBuyFee = 3;
-        charityBuyFee = 3;
+        liquidityBuyFee = 1;
+        marketingBuyFee = 1;
+        devBuyFee = 1;
+        charityBuyFee = 2;
         totalBuyFees = liquidityBuyFee.add(marketingBuyFee).add(devBuyFee).add(charityBuyFee);
 
 
@@ -387,8 +387,7 @@ contract DRST is ERC20, Ownable {
         ) {
             swapping = true;
 
-            //if sell
-            if(automatedMarketMakerPairs[to]) {
+            if(automatedMarketMakerPairs[to]) {     //if sell
                 //marketing
                 uint256 marketingTokens = contractTokenBalance.mul(marketingSellFee).div(totalSellFees);
                 super._transfer(from, marketingWallet, marketingTokens);
@@ -399,14 +398,13 @@ contract DRST is ERC20, Ownable {
 
                 //dev
                 uint256 devTokens = contractTokenBalance.mul(devSellFee).div(totalSellFees);
-                super._transfer(from, marketingWallet, devTokens);
+                super._transfer(from, devWallet, devTokens);
 
                 //liquidity
                 uint256 swapTokens = contractTokenBalance.mul(liquiditySellFee).div(totalSellFees);
                 swapAndLiquify(swapTokens);
             }
-            //else buy
-            else {
+            else {      //else buy
                 //marketing
                 uint256 marketingTokens = contractTokenBalance.mul(marketingBuyFee).div(totalSellFees);
                 super._transfer(from, marketingWallet, marketingTokens);
@@ -417,7 +415,7 @@ contract DRST is ERC20, Ownable {
 
                 //dev
                 uint256 devTokens = contractTokenBalance.mul(devBuyFee).div(totalSellFees);
-                super._transfer(from, marketingWallet, devTokens);
+                super._transfer(from, devWallet, devTokens);
 
                 //liquidity
                 uint256 swapTokens = contractTokenBalance.mul(liquidityBuyFee).div(totalSellFees);
