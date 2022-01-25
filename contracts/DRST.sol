@@ -188,6 +188,7 @@ contract DRST is ERC20, Ownable {
         newDividendTracker.excludeFromDividends(address(this));
         newDividendTracker.excludeFromDividends(owner());
         newDividendTracker.excludeFromDividends(address(uniswapV2Router));
+        newDividendTracker.excludeFromDividends(deadWallet);
 
         emit UpdateDividendTracker(newAddress, address(dividendTracker));
 
@@ -370,12 +371,7 @@ contract DRST is ERC20, Ownable {
             canSwap &&
             !swapping &&
             !automatedMarketMakerPairs[from] &&
-            from != liquidityWallet && to != liquidityWallet &&
-            from != charityWallet && to != charityWallet &&
-            from != marketingWallet && to != marketingWallet &&
-            from != devWallet && to != devWallet &&
-            from != owner() &&
-            to != owner()
+            from != owner() && to != owner()
         ) {
             swapping = true;
 
