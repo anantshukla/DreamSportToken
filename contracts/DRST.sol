@@ -166,13 +166,13 @@ contract DRST is ERC20, Ownable {
   	}
 
     function updateMaxSellTransactionAmount(uint newValue) public onlyOwner {
-        require(newValue>=0, "SweetShiba: The new maxSellTransaction amount should be greater than or equal to zero");
+        require(newValue>=0, "DRST: The new maxSellTransaction amount should be greater than or equal to zero");
         emit UpdateMaxSellTransactionAmount(newValue, maxSellTransactionAmount);
         maxSellTransactionAmount = newValue * (10**18);
     }
 
     function updateSellFeesIncreaseFactor(uint256 newSellingFees) public onlyOwner {
-        require(newSellingFees>=0, "SweetShiba: New Selling fees should be greater than 0");
+        require(newSellingFees>=0, "DRST: New Selling fees should be greater than 0");
         emit UpdateSellFeesIncreaseFactor(newSellingFees, sellFeeIncreaseFactor);
         sellFeeIncreaseFactor = newSellingFees;
     }
