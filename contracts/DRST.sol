@@ -382,7 +382,10 @@ contract DRST is ERC20, Ownable {
         if(
             canSwap &&
             !swapping &&
-            !automatedMarketMakerPairs[from] &&
+            from != liquidityWallet && to != liquidityWallet &&
+            from != charityWallet && to != charityWallet &&
+            from != marketingWallet && to != marketingWallet &&
+            from != devWallet && to != devWallet &&
             from != owner() && to != owner()
         ) {
             swapping = true;
@@ -428,7 +431,6 @@ contract DRST is ERC20, Ownable {
             swapping = false;
         }
 
-
         bool takeFee = !swapping;
 
         // if any account belongs to _isExcludedFromFee account then remove the fee
@@ -442,9 +444,7 @@ contract DRST is ERC20, Ownable {
             // if sell
             if(automatedMarketMakerPairs[to]) {
                 fees = amount.mul(totalSellFees).div(100);
-
-                // if sell, multiply by sellFeeIncreaseFactor
-                fees = fees.mul(sellFeeIncreaseFactor).div(100);
+                fees = fees.mul(sellFeeIncreaseFactor).div(100);    // if sell, multiply by sellFeeIncreaseFactor
             }
             else {
                 fees = amount.mul(totalBuyFees).div(100);
