@@ -43,12 +43,18 @@ contract DRST is ERC20, Ownable {
     
     mapping(address => bool) public _isBlacklisted;
     
+    uint256 public marketingFee;
+    uint256 public devFee;
+    uint256 public charityFee;
+    uint256 public liquidityFee;
+    uint256 public totalFees;
+
+
     //Buy
     uint256 public liquidityBuyFee;
     uint256 public marketingBuyFee;
     uint256 public devBuyFee;
     uint256 public charityBuyFee;
-    //total
     uint256 public totalBuyFees;
     
     //Sell
@@ -57,13 +63,7 @@ contract DRST is ERC20, Ownable {
     uint256 public devSellFee;
     uint256 public charitySellFee;
     uint256 public BNBSellRewardsFee;
-    
-    //total
     uint256 public totalSellFees;
-
-    // sellTax = (totalSellFees * sellFeesIncreaseFactor)/100 - totalSellFees
-    // sells have fees of 0% initally
-    uint256 public sellFeeIncreaseFactor = 100; 
 
     // use by default 300,000 gas to process auto-claiming dividends
     uint256 public gasForProcessing = 300000;
@@ -78,7 +78,6 @@ contract DRST is ERC20, Ownable {
     mapping (address => bool) public automatedMarketMakerPairs;
 
     event UpdateDividendTracker(address indexed newAddress, address indexed oldAddress);
-    event UpdateSellFeesIncreaseFactor(uint newSellingFees, uint sellFeeIncreaseFactor);
     
     event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
 
@@ -181,12 +180,6 @@ contract DRST is ERC20, Ownable {
         require(newValue>=0, "DRST: The new maxSellTransaction amount should be greater than or equal to zero");
         emit UpdateMaxSellTransactionAmount(newValue, maxSellTransactionAmount);
         maxSellTransactionAmount = newValue * (10**18);
-    }
-
-    function updateSellFeesIncreaseFactor(uint256 newSellingFees) public onlyOwner {
-        require(newSellingFees>=0, "DRST: New Selling fees should be greater than 0");
-        emit UpdateSellFeesIncreaseFactor(newSellingFees, sellFeeIncreaseFactor);
-        sellFeeIncreaseFactor = newSellingFees;
     }
 
     function updateDividendTracker(address newAddress) public onlyOwner {
@@ -304,6 +297,22 @@ contract DRST is ERC20, Ownable {
     	return dividendTracker.withdrawableDividendOf(account);
   	}
 
+    function setFeeOnBuy() private {
+        marketingFee = marketingBuyFee;
+        devFee = devBuyFee;
+        charityFee = charityBuyFee;
+        liquidityFee = liquidityBuyFee;
+        totalFees = totalBuyFees;
+    }
+
+    function setFeeOnSell() private {
+        marketingFee = marketingSellFee;
+        devFee = devSellFee;
+        charityFee = charitySellFee;
+        liquidityFee = liquiditySellFee;
+        totalFees = totalSellFees;
+    }
+
 	function dividendTokenBalanceOf(address account) public view returns (uint256) {
 		return dividendTracker.balanceOf(account);
 	}
@@ -382,48 +391,27 @@ contract DRST is ERC20, Ownable {
         if(
             canSwap &&
             !swapping &&
-            from != liquidityWallet && to != liquidityWallet &&
-            from != charityWallet && to != charityWallet &&
-            from != marketingWallet && to != marketingWallet &&
-            from != devWallet && to != devWallet &&
-            from != owner() && to != owner()
+            !automatedMarketMakerPairs[from] &&
+            !_isExcludedFromFees[from] &&
+            !_isExcludedFromFees[to]
         ) {
             swapping = true;
 
-            if(automatedMarketMakerPairs[to]) {     //if sell
-                //marketing
-                uint256 marketingTokens = contractTokenBalance.mul(marketingSellFee).div(totalSellFees);
-                super._transfer(from, marketingWallet, marketingTokens);
-                
-                //charity
-                uint256 charityTokens = contractTokenBalance.mul(charitySellFee).div(totalSellFees);
-                super._transfer(from, charityWallet, charityTokens);
+            //marketing
+            uint256 marketingTokens = contractTokenBalance.mul(marketingFee).div(totalFees);
+            super._transfer(from, marketingWallet, marketingTokens);
+            
+            //dev
+            uint256 devTokens = contractTokenBalance.mul(devFee).div(totalFees);
+            super._transfer(from, devWallet, devTokens);
 
-                //dev
-                uint256 devTokens = contractTokenBalance.mul(devSellFee).div(totalSellFees);
-                super._transfer(from, devWallet, devTokens);
+            //charity
+            uint256 charityTokens = contractTokenBalance.mul(charityFee).div(totalFees);
+            super._transfer(from, charityWallet, charityTokens);
 
-                //liquidity
-                uint256 swapTokens = contractTokenBalance.mul(liquiditySellFee).div(totalSellFees);
-                swapAndLiquify(swapTokens);
-            }
-            else {      //else buy
-                //marketing
-                uint256 marketingTokens = contractTokenBalance.mul(marketingBuyFee).div(totalSellFees);
-                super._transfer(from, marketingWallet, marketingTokens);
-                
-                //charity
-                uint256 charityTokens = contractTokenBalance.mul(charityBuyFee).div(totalSellFees);
-                super._transfer(from, charityWallet, charityTokens);
-
-                //dev
-                uint256 devTokens = contractTokenBalance.mul(devBuyFee).div(totalSellFees);
-                super._transfer(from, devWallet, devTokens);
-
-                //liquidity
-                uint256 swapTokens = contractTokenBalance.mul(liquidityBuyFee).div(totalSellFees);
-                swapAndLiquify(swapTokens);
-            }
+            //liquidity
+            uint256 swapTokens = contractTokenBalance.mul(liquidityFee).div(totalFees);
+            swapAndLiquify(swapTokens);
 
             uint256 sellTokens = balanceOf(address(this));
             swapAndSendDividends(sellTokens);
@@ -439,19 +427,15 @@ contract DRST is ERC20, Ownable {
         }
 
         if(takeFee) {
-            uint256 fees;
-
-            // if sell
-            if(automatedMarketMakerPairs[to]) {
-                fees = amount.mul(totalSellFees).div(100);
-                fees = fees.mul(sellFeeIncreaseFactor).div(100);    // if sell, multiply by sellFeeIncreaseFactor
+            if(automatedMarketMakerPairs[to]) {     // if sell
+                setFeeOnSell();
             }
-            else {
-                fees = amount.mul(totalBuyFees).div(100);
+            else {      // else sell
+                setFeeOnBuy();
             }
 
+            uint256 fees = amount.mul(totalFees).div(100);
         	amount = amount.sub(fees);
-
             super._transfer(from, address(this), fees);
         }
 
