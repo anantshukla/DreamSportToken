@@ -78,7 +78,6 @@ contract DRST is ERC20, Ownable {
     mapping (address => bool) public automatedMarketMakerPairs;
 
     event UpdateDividendTracker(address indexed newAddress, address indexed oldAddress);
-    
     event UpdateUniswapV2Router(address indexed newAddress, address indexed oldAddress);
 
     event ExcludeFromFees(address indexed account, bool isExcluded);
@@ -252,6 +251,7 @@ contract DRST is ERC20, Ownable {
     function updateMarketingWallet(address newMarketingWallet) public onlyOwner {
         require(newMarketingWallet != marketingWallet, "DRST: The marketing wallet is already this address");
         excludeFromFees(newMarketingWallet, true);
+        dividendTracker.excludeFromDividends(newMarketingWallet);
         emit MarketingWalletUpdated(newMarketingWallet, marketingWallet);
         marketingWallet = newMarketingWallet;
     }
@@ -259,6 +259,7 @@ contract DRST is ERC20, Ownable {
     function updateCharityWallet(address newCharityWallet) public onlyOwner {
         require(newCharityWallet != charityWallet, "DRST: The charity wallet is already this address");
         excludeFromFees(newCharityWallet, true);
+        dividendTracker.excludeFromDividends(newCharityWallet);
         emit CharityWalletUpdated(newCharityWallet, charityWallet);
         charityWallet = newCharityWallet;
     }
@@ -266,6 +267,7 @@ contract DRST is ERC20, Ownable {
     function updateDevWallet(address newDevWallet) public onlyOwner {
         require(newDevWallet != devWallet, "DRST: The dev wallet is already this address");
         excludeFromFees(newDevWallet, true);
+        dividendTracker.excludeFromDividends(newDevWallet);
         emit devWalletUpdated(newDevWallet, devWallet);
         devWallet = newDevWallet;
     }
